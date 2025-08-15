@@ -1,0 +1,14 @@
+{
+  "version": "2018-05-29",
+  "operation": "BatchDeleteItem",
+  "tables": {
+    "$ctx.stash.messagesTable": [
+      #foreach($message in $ctx.prev.result.items)
+        {
+          "chatId": $util.dynamodb.toDynamoDBJson($message.chatId),
+          "sk": $util.dynamodb.toDynamoDBJson($message.sk)
+        }#if($foreach.hasNext),#end
+      #end
+    ]
+  }
+}
