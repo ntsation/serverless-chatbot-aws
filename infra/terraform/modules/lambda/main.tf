@@ -9,6 +9,7 @@ resource "aws_lambda_function" "orchestrator" {
     variables = {
       APPSYNC_URL    = var.appsync_url
       MESSAGES_TABLE = var.messages_table
+      CHATS_TABLE    = var.chats_table
     }
   }
 
