@@ -45,3 +45,8 @@ output "messages_table_name" {
   description = "Name of the Messages DynamoDB table"
   value       = module.dynamodb.messages_table_name
 }
+
+output "ecr_repository_url" {
+  description = "URL of the ECR repository"
+  value       = module.ecr.orchestrator_repository_url
+}
