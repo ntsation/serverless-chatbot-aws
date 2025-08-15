@@ -39,7 +39,7 @@ type Mutation {
   createUser(email: String!): User
   createChat(title: String!): Chat
   sendMessage(chatId: ID!, content: String!): Message
-  addAssistantMessage(chatId: ID!, content: String!): 
+  addAssistantMessage(chatId: ID!, content: String!): Message 
   deleteChat(id: ID!): Boolean
 }
 
