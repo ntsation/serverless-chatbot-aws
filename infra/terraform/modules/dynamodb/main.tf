@@ -9,7 +9,7 @@ resource "aws_dynamodb_table" "users" {
   }
 
   tags = {
-    Name        = "${var.project_name}-users"
+    Name = "${var.project_name}-users"
   }
 }
 
@@ -32,14 +32,14 @@ resource "aws_dynamodb_table" "chats" {
   }
 
   global_secondary_index {
-    name               = "GSI1"
-    hash_key           = "userId"
-    range_key          = "createdAt"
-    projection_type    = "ALL"
+    name            = "GSI1"
+    hash_key        = "userId"
+    range_key       = "createdAt"
+    projection_type = "ALL"
   }
 
   tags = {
-    Name        = "${var.project_name}-chats"
+    Name = "${var.project_name}-chats"
   }
 }
 
@@ -59,6 +59,6 @@ resource "aws_dynamodb_table" "messages" {
   }
 
   tags = {
-    Name        = "${var.project_name}-messages"
+    Name = "${var.project_name}-messages"
   }
 }
