@@ -55,6 +55,7 @@ module "lambda" {
   lambda_role_arn    = module.iam.lambda_role_arn
   appsync_url        = module.appsync.api_url
   messages_table     = module.dynamodb.messages_table_name
+  chats_table        = module.dynamodb.chats_table_name
   depends_on = [ module.ecr ]
 }
 
