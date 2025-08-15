@@ -1,23 +1,17 @@
-export function request(ctx) {
-  const ts = util.time.nowISO8601();
-  const id = util.autoId();
-  return {
-    version: "2018-05-29",
-    operation: "PutItem",
-    key: {
-      chatId: util.dynamodb.toDynamoDB(ctx.args.chatId),
-      sk: util.dynamodb.toDynamoDB(`${ts}#${id}`)
-    },
-    attributeValues: {
-      id: util.dynamodb.toDynamoDB(id),
-      userId: util.dynamodb.toDynamoDB(ctx.identity.sub),
-      role: util.dynamodb.toDynamoDB("user"),
-      content: util.dynamodb.toDynamoDB(ctx.args.content),
-      createdAt: util.dynamodb.toDynamoDB(ts)
-    }
-  };
-}
-
-export function response(ctx) {
-  return ctx.result;
+{
+  "version": "2018-05-29",
+  "operation": "PutItem",
+  "key": {
+    "chatId": $util.dynamodb.toDynamoDBJson($context.arguments.chatId),
+    "sk": $util.dynamodb.toDynamoDBJson($util.autoId())
+  },
+  "attributeValues": {
+    "chatId": $util.dynamodb.toDynamoDBJson($context.arguments.chatId),
+    "sk": $util.dynamodb.toDynamoDBJson($util.autoId()),
+    "id": $util.dynamodb.toDynamoDBJson($util.autoId()),
+    "userId": $util.dynamodb.toDynamoDBJson($context.identity.sub),
+    "role": $util.dynamodb.toDynamoDBJson("user"),
+    "content": $util.dynamodb.toDynamoDBJson($context.arguments.content),
+    "createdAt": $util.dynamodb.toDynamoDBJson($util.time.nowISO8601())
+  }
 }
