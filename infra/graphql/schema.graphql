@@ -1,0 +1,49 @@
+scalar AWSDateTime
+
+type User {
+  id: ID!
+  name: String!
+  email: String!
+  createdAt: AWSDateTime!
+}
+
+type Chat {
+  id: ID!
+  userId: ID!
+  title: String!
+  createdAt: AWSDateTime!
+}
+
+type Message {
+  id: ID!
+  chatId: ID!
+  userId: ID!
+  role: String!
+  content: String!
+  createdAt: AWSDateTime!
+}
+
+type MessageConnection {
+  items: [Message!]!
+  nextToken: String
+}
+
+type Query {
+  me: User!
+  getChat(id: ID!): Chat!
+  listChatsByUser(userId: ID!, limit: Int, nextToken: String): [Chat!]!
+  listMessages(chatId: ID!, limit: Int, nextToken: String): MessageConnection!
+}
+
+type Mutation {
+  createUser(email: String!): User
+  createChat(title: String!): Chat
+  sendMessage(chatId: ID!, content: String!): Message
+  addAssistantMessage(chatId: ID!, content: String!): 
+  deleteChat(id: ID!): Boolean
+}
+
+type Subscription {
+  onMessageSent(chatId: ID!): Message!
+    @aws_subscribe(mutations: ["sendMessage", "addAssistantMessage"])
+}
