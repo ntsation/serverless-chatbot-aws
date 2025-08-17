@@ -1,4 +1,3 @@
-# Cognito Outputs
 output "cognito_user_pool_id" {
   description = "ID of the Cognito User Pool"
   value       = module.cognito.user_pool_id
@@ -24,13 +23,22 @@ output "cognito_logout_url" {
   value       = module.cognito.hosted_ui_logout_url
 }
 
-# AppSync Output
 output "appsync_url" {
   description = "AppSync GraphQL URL"
   value       = module.appsync.api_url
 }
 
-# DynamoDB Outputs
+output "appsync_api_key" {
+  description = "AppSync API Key"
+  value       = module.appsync.api_key
+  sensitive   = true
+}
+
+output "appsync_realtime_url" {
+  description = "AppSync Real-time WebSocket URL"
+  value       = module.appsync.realtime_url
+}
+
 output "users_table_name" {
   description = "Name of the Users DynamoDB table"
   value       = module.dynamodb.users_table_name
@@ -44,4 +52,9 @@ output "chats_table_name" {
 output "messages_table_name" {
   description = "Name of the Messages DynamoDB table"
   value       = module.dynamodb.messages_table_name
+}
+
+output "ecr_repository_url" {
+  description = "URL of the ECR repository"
+  value       = module.ecr.orchestrator_repository_url
 }
