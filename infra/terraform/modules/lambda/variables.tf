@@ -27,3 +27,8 @@ variable "messages_table" {
   description = "Name of the messages DynamoDB table"
   type        = string
 }
+
+variable "chats_table" {
+  description = "Name of the chats DynamoDB table"
+  type        = string
+}
