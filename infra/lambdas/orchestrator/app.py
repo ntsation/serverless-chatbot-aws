@@ -2,17 +2,14 @@ import os, json, boto3
 from urllib import request as urlreq
 from botocore.auth import SigV4Auth
 from botocore.awsrequest import AWSRequest
-from boto3.dynamodb.conditions import Key
 
 APPSYNC_URL = os.environ["APPSYNC_URL"]
 AWS_REGION = os.environ.get("AWS_REGION", "us-east-1")
-MESSAGES_TABLE = os.environ["MESSAGES_TABLE"]
-CHATS_TABLE = os.environ["CHATS_TABLE"]
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
 OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
 
 def sign_and_post(url, payload: dict):
-    
+
     try:
         session = boto3.Session()
         credentials = session.get_credentials()
@@ -63,10 +60,15 @@ def call_openai(messages):
     if not OPENAI_API_KEY:
         return "Mensagem de teste: a função OpenAI está funcionando corretamente!"
     
+    cleaned_messages = []
+    for msg in messages:
+        cleaned_msg = {"role": msg["role"], "content": msg["content"]}
+        cleaned_messages.append(cleaned_msg)
+    
     api = "https://api.openai.com/v1/chat/completions"
     body = json.dumps({
         "model": OPENAI_MODEL,
-        "messages": messages,
+        "messages": cleaned_messages,
         "temperature": 0.4,
     }).encode("utf-8")
     req = urlreq.Request(api, data=body, method="POST",
@@ -76,108 +78,104 @@ def call_openai(messages):
         r = json.loads(resp.read())
     return r["choices"][0]["message"]["content"]
 
-def build_history(dynamodb, chat_id):
-    table = dynamodb.Table(MESSAGES_TABLE)
-    resp = table.query(
-        KeyConditionExpression=Key("chatId").eq(chat_id),
-        ScanIndexForward=True,
-        Limit=50
-    )
-    messages = []
-    for it in resp.get("Items", []):
-        role = it.get("role", "user")
-        content = it["content"]
-        user_id = it.get("userId")
-        message = {"role": role, "content": content}
-        if user_id:
-            message["userId"] = user_id
-        messages.append(message)
-    return messages
+def get_chat_history(chat_id):
+    query = """
+      query GetMessages($chatId: ID!, $limit: Int) {
+        listMessages(chatId: $chatId, limit: $limit) {
+          items {
+            role
+            content
+            createdAt
+          }
+        }
+      }
+    """
+    
+    result = sign_and_post(APPSYNC_URL, {
+        "query": query,
+        "variables": {
+            "chatId": chat_id,
+            "limit": 50
+        }
+    })
+    
+    messages = result.get("listMessages", {}).get("items", [])
+    
+    history = []
+    for msg in messages:
+        history.append({
+            "role": msg["role"],
+            "content": msg["content"]
+        })
+    
+    return history
 
-def delete_chat_with_messages(dynamodb, chat_id, user_id):
-    try:
-        messages_table = dynamodb.Table(MESSAGES_TABLE)
-        messages_resp = messages_table.query(
-            KeyConditionExpression=Key("chatId").eq(chat_id)
-        )
-        
-        messages_to_delete = messages_resp.get("Items", [])
-        if messages_to_delete:
-            with messages_table.batch_writer() as batch:
-                for message in messages_to_delete:
-                    batch.delete_item(
-                        Key={
-                            'chatId': message['chatId'],
-                            'sk': message['sk']
-                        }
-                    )
-            print(f"Deleted {len(messages_to_delete)} messages for chat {chat_id}")
-        
-        chats_table = dynamodb.Table(CHATS_TABLE)
-        try:
-            chats_table.delete_item(
-                Key={'id': chat_id},
-                ConditionExpression='userId = :userId',
-                ExpressionAttributeValues={':userId': user_id}
-            )
-            print(f"Deleted chat {chat_id}")
-        except dynamodb.meta.client.exceptions.ConditionalCheckFailedException:
-            print(f"Chat {chat_id} não existe ou não pertence ao usuário {user_id}")
-        
-        return {"success": True, "deleted_messages": len(messages_to_delete)}
-        
-    except Exception as e:
-        print(f"Erro ao deletar chat {chat_id}: {str(e)}")
-        raise e
+def save_assistant_message(chat_id, content, user_id):
+    mutation = """
+      mutation AddAssistant($chatId: ID!, $content: String!, $userId: ID!) {
+        addAssistantMessage(chatId: $chatId, content: $content, userId: $userId) {
+          id
+          chatId
+          role
+          content
+          createdAt
+        }
+      }
+    """
+    
+    return sign_and_post(APPSYNC_URL, {
+        "query": mutation,
+        "variables": {
+            "chatId": chat_id,
+            "content": content,
+            "userId": user_id
+        }
+    })
 
 def handler(event, _ctx):
     print(f"Event received: {json.dumps(event)}")
     
-    user_id = None
-    if 'identity' in event and 'sub' in event['identity']:
-        user_id = event['identity']['sub']
-    elif 'arguments' in event and 'identity' in event:
-        user_id = event['identity']['sub']
-    
-    if not user_id:
-        raise ValueError("User ID is required for authentication")
-    
-    if event.get("operation") == "deleteChat" or (
-        'arguments' in event and 'arguments' in event['arguments'] and 
-        event['arguments']['arguments'].get("operation") == "deleteChat"
-    ):
+    try:
         args = event.get("arguments", {})
-        if 'arguments' in args:
-            args = args['arguments']
+        identity = event.get("identity", {})
         
-        chat_id = args.get("id")
+        chat_id = args.get("chatId")
+        user_input = args.get("content")
+        user_id = identity.get("sub")
         
         if not chat_id:
-            raise ValueError("Chat ID é obrigatório")
+            raise ValueError("chatId é obrigatório")
+        if not user_input:
+            raise ValueError("content é obrigatório")
+        if not user_id:
+            raise ValueError("User ID é obrigatório para autenticação")
         
-        dynamodb = boto3.resource("dynamodb")
-        result = delete_chat_with_messages(dynamodb, chat_id, user_id)
-        return result
-    
-    args = event.get("arguments", {})
-    if 'arguments' in args:
-        args = args['arguments']
-    
-    chat_id = args["chatId"]
-    user_input = args["content"]
-
-    dynamodb = boto3.resource("dynamodb")
-    hist = build_history(dynamodb, chat_id)
-    
-    hist.append({"role": "user", "content": user_input})
-    reply = call_openai(hist)
-
-    mutation = """
-      mutation AddAssistant($chatId: ID!, $content: String!, $userId: ID!) {
-        addAssistantMessage(chatId: $chatId, content: $content, userId: $userId) {
-          id chatId role content createdAt
+        print(f"Processando mensagem para chat {chat_id} do usuário {user_id}")
+        
+        history = get_chat_history(chat_id)
+        history.append({"role": "user", "content": user_input})
+        
+        print(f"Histórico construído com {len(history)} mensagens")
+        
+        assistant_reply = call_openai(history)
+        
+        print(f"Resposta gerada: {assistant_reply[:100]}...")
+        
+        result = save_assistant_message(chat_id, assistant_reply, user_id)
+        
+        print(f"Resposta do assistente salva com sucesso")
+        
+        return {
+            "success": True,
+            "message": "Resposta do assistente processada com sucesso",
+            "assistantMessage": result.get("addAssistantMessage")
         }
-      }
-    """
-    result = sign_and_post(APPSYNC_URL, {"query": mutation, "variables": {"chatId": chat_id, "content": reply, "userId": user_id}})
-    return {"ok": True, "result": result}
+        
+    except Exception as e:
+        error_msg = f"Erro ao processar mensagem: {str(e)}"
+        print(error_msg)
+        
+        return {
+            "success": False,
+            "error": error_msg
+        }
