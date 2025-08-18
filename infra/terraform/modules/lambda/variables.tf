@@ -22,13 +22,3 @@ variable "appsync_url" {
   description = "URL of the AppSync API"
   type        = string
 }
-
-variable "messages_table" {
-  description = "Name of the messages DynamoDB table"
-  type        = string
-}
-
-variable "chats_table" {
-  description = "Name of the chats DynamoDB table"
-  type        = string
-}
