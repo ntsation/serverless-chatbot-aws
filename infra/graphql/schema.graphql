@@ -37,13 +37,13 @@ type Query {
 
 type Mutation {
   createUser(email: String!): User
-  createChat(title: String!): Chat
+  createChat(title: String!, userId: ID!): Chat
   sendMessage(chatId: ID!, content: String!): Message
   addAssistantMessage(chatId: ID!, content: String!, userId: ID!): Message 
   deleteChat(id: ID!): Boolean
 }
 
 type Subscription {
-  onMessageSent(chatId: ID!): Message!
+  onMessageSent(chatId: ID!): Message
     @aws_subscribe(mutations: ["sendMessage", "addAssistantMessage"])
 }

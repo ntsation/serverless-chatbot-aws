@@ -100,16 +100,24 @@ resource "aws_appsync_function" "invoke_orchestrator" {
 }
 
 resource "aws_appsync_resolver" "send_message" {
-  api_id      = aws_appsync_graphql_api.api.id
-  type        = "Mutation"
-  field       = "sendMessage"
-  data_source = aws_appsync_datasource.messages_table.name
+  api_id = aws_appsync_graphql_api.api.id
+  type   = "Mutation"
+  field  = "sendMessage"
+  kind   = "PIPELINE"
+
+  pipeline_config {
+    functions = [
+      aws_appsync_function.put_user_message.function_id,
+      aws_appsync_function.invoke_orchestrator.function_id
+    ]
+  }
 
   runtime {
     name            = "APPSYNC_JS"
     runtime_version = "1.0.0"
   }
-  code = file("${path.module}/functions/fn_put_user_message.js")
+
+  code = file("${path.module}/functions/fn_send_message_pipeline.js")
 }
 
 resource "aws_appsync_resolver" "create_user" {

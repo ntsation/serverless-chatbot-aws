@@ -1,26 +1,21 @@
-// send.js
 const fetch = require('node-fetch');
 const URL_API_ID = '';
 const REGION = '';
 const API_KEY = '';
 
-
 const MUTATION = `
-mutation SendMessage($chatId: ID!, $content: String!) {
-  sendMessage(chatId: $chatId, content: $content) {
+mutation CreateUser($email: String!) {
+  createUser(email: $email) {
     id
-    chatId
-    userId
-    role
-    content
+    name
+    email
     createdAt
   }
 }
 `;
 
 const VARIABLES = {
-  chatId: '',
-  content: '',
+  email: '',
 };
 
 const url = `https://${URL_API_ID}.appsync-api.${REGION}.amazonaws.com/graphql`;
@@ -40,8 +35,8 @@ const url = `https://${URL_API_ID}.appsync-api.${REGION}.amazonaws.com/graphql`;
     });
 
     const data = await res.json();
-    console.log('✅ Resposta da mutation:', data);
+    console.log('✅ Usuário criado:', data);
   } catch (err) {
-    console.error('❌ Erro ao enviar mensagem:', err);
+    console.error('❌ Erro ao criar usuário:', err);
   }
 })();

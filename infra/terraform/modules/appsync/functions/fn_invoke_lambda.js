@@ -1,15 +1,23 @@
 import { util } from '@aws-appsync/utils';
 
 export function request(ctx) {
+  const userMessage = ctx.prev.result;
+  
+  ctx.stash.userMessage = userMessage;
+  
   return {
     operation: 'Invoke',
     payload: {
-      arguments: ctx.arguments,
-      identity: {
-        sub: ctx.identity.sub,
-        username: ctx.identity.username
+      arguments: {
+        chatId: ctx.arguments.chatId || userMessage.chatId,
+        content: ctx.arguments.content || userMessage.content
       },
-      source: ctx.source
+      identity: {
+        sub: ctx.identity?.sub || 'api-key-user',
+        username: ctx.identity?.username || 'api-key-user'
+      },
+      source: ctx.source,
+      userMessage: userMessage
     }
   };
 }
@@ -18,5 +26,5 @@ export function response(ctx) {
   if (ctx.error) {
     return util.error(ctx.error.message, ctx.error.type);
   }
-  return ctx.result;
+  return ctx.stash.userMessage;
 }

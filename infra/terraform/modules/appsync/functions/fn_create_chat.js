@@ -10,7 +10,7 @@ export function request(ctx) {
     },
     attributeValues: {
       id: util.dynamodb.toDynamoDB(chatId),
-      userId: util.dynamodb.toDynamoDB(ctx.identity.sub),
+      userId: util.dynamodb.toDynamoDB(ctx.arguments.userId),
       title: util.dynamodb.toDynamoDB(ctx.arguments.title),
       createdAt: util.dynamodb.toDynamoDB(util.time.nowISO8601())
     }
