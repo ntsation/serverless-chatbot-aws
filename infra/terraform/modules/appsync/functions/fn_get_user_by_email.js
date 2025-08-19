@@ -4,7 +4,7 @@ export function request(ctx) {
   return {
     operation: 'GetItem',
     key: {
-      id: util.dynamodb.toDynamoDB(ctx.identity.sub)
+      id: util.dynamodb.toDynamoDB(ctx.identity?.sub || 'api-key-user')
     }
   };
 }
