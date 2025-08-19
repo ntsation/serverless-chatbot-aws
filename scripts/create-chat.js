@@ -1,4 +1,3 @@
-// create-chat.js
 const fetch = require('node-fetch');
 const URL_API_ID = '';
 const REGION = '';
