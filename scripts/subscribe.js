@@ -1,9 +1,10 @@
 const WebSocket = require('ws');
 const crypto = require('crypto');
 
-const API_ID = '';
+const URL_API_ID = '';
 const REGION = '';
 const API_KEY = '';
+
 
 const SUBSCRIPTION = `
 subscription OnMessageSent($chatId: ID!) {
@@ -23,14 +24,14 @@ const VARIABLES = {
 };
 
 const headers = {
-  host: `${API_ID}.appsync-api.${REGION}.amazonaws.com`,
+  host: `${URL_API_ID}.appsync-api.${REGION}.amazonaws.com`,
   'x-api-key': API_KEY,
 };
 
 const headerB64 = Buffer.from(JSON.stringify(headers)).toString('base64');
 const payloadB64 = Buffer.from(JSON.stringify({})).toString('base64');
 
-const wsUrl = `wss://${API_ID}.appsync-realtime-api.${REGION}.amazonaws.com/graphql?header=${headerB64}&payload=${payloadB64}`;
+const wsUrl = `wss://${URL_API_ID}.appsync-realtime-api.${REGION}.amazonaws.com/graphql?header=${headerB64}&payload=${payloadB64}`;
 
 const ws = new WebSocket(wsUrl, 'graphql-ws');
 
