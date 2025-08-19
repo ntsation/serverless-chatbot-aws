@@ -1,7 +1,9 @@
+require('dotenv').config({ path: '../.env' });
 const fetch = require('node-fetch');
-const URL_API_ID = '';
-const REGION = '';
-const API_KEY = '';
+
+const URL_API_ID = process.env.APPSYNC_API_ID;
+const REGION = process.env.AWS_REGION;
+const API_KEY = process.env.APPSYNC_API_KEY;
 
 const MUTATION = `
 mutation CreateUser($email: String!) {
@@ -15,7 +17,7 @@ mutation CreateUser($email: String!) {
 `;
 
 const VARIABLES = {
-  email: '',
+  email: process.env.USER_EMAIL || 'test@example.com',
 };
 
 const url = `https://${URL_API_ID}.appsync-api.${REGION}.amazonaws.com/graphql`;
