@@ -1,8 +1,9 @@
 // send.js
 const fetch = require('node-fetch');
-const API_ID = '';
+const URL_API_ID = '';
 const REGION = '';
 const API_KEY = '';
+
 
 const MUTATION = `
 mutation SendMessage($chatId: ID!, $content: String!) {
@@ -22,7 +23,7 @@ const VARIABLES = {
   content: '',
 };
 
-const url = `https://${API_ID}.appsync-api.${REGION}.amazonaws.com/graphql`;
+const url = `https://${URL_API_ID}.appsync-api.${REGION}.amazonaws.com/graphql`;
 
 (async () => {
   try {
