@@ -11,6 +11,10 @@ resource "aws_appsync_graphql_api" "api" {
     }
   }
 
+  additional_authentication_provider {
+    authentication_type = "AWS_IAM"
+  }
+
   log_config {
     cloudwatch_logs_role_arn = var.cloudwatch_logs_role_arn
     field_log_level          = var.cloudwatch_logs_role_arn != "" ? "ERROR" : "NONE"
