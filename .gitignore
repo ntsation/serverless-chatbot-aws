@@ -2,3 +2,5 @@
 *tfstate*
 *venv
 *pycache*
+node_modules
+package-lock.json
