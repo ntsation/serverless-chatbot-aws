@@ -1,9 +1,10 @@
+require('dotenv').config({ path: '../.env' });
 const WebSocket = require('ws');
 const crypto = require('crypto');
 
-const URL_API_ID = '';
-const REGION = '';
-const API_KEY = '';
+const URL_API_ID = process.env.APPSYNC_API_ID;
+const REGION = process.env.AWS_REGION;
+const API_KEY = process.env.APPSYNC_API_KEY;
 
 
 const SUBSCRIPTION = `
@@ -20,7 +21,7 @@ subscription OnMessageSent($chatId: ID!) {
 `;
 
 const VARIABLES = {
-  chatId: '',
+  chatId: process.env.CHAT_ID || '',
 };
 
 const headers = {
