@@ -17,7 +17,7 @@ type Chat {
 type Message {
   id: ID!
   chatId: ID!
-  userId: ID!
+  userId: ID
   role: String!
   content: String!
   createdAt: AWSDateTime!
@@ -39,7 +39,7 @@ type Mutation @aws_api_key @aws_cognito_user_pools {
   createUser(email: String!): User
   createChat(title: String!, userId: ID!): Chat
   sendMessage(chatId: ID!, content: String!): Message
-  addAssistantMessage(chatId: ID!, content: String!, userId: ID!): Message 
+  addAssistantMessage(chatId: ID!, content: String!): Message 
   deleteChat(id: ID!): Boolean
 }
 
