@@ -4,6 +4,9 @@ export function request(ctx) {
   const messageId = util.autoId();
   const timestamp = util.time.nowISO8601();
   
+  ctx.stash.messageId = messageId;
+  ctx.stash.timestamp = timestamp;
+  
   return {
     operation: 'PutItem',
     key: {
@@ -12,7 +15,6 @@ export function request(ctx) {
     },
     attributeValues: {
       id: util.dynamodb.toDynamoDB(messageId),
-      userId: util.dynamodb.toDynamoDB(ctx.arguments.userId),
       role: util.dynamodb.toDynamoDB('assistant'),
       content: util.dynamodb.toDynamoDB(ctx.arguments.content),
       createdAt: util.dynamodb.toDynamoDB(timestamp)
@@ -26,11 +28,11 @@ export function response(ctx) {
   }
   
   return {
-    id: ctx.result.id,
-    chatId: ctx.result.chatId,
-    userId: ctx.result.userId,
-    role: ctx.result.role,
-    content: ctx.result.content,
-    createdAt: ctx.result.createdAt
+    id: ctx.stash.messageId,
+    chatId: ctx.arguments.chatId,
+    userId: null,
+    role: 'assistant',
+    content: ctx.arguments.content,
+    createdAt: ctx.stash.timestamp
   };
 }

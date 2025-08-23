@@ -4,41 +4,57 @@ from botocore.auth import SigV4Auth
 from botocore.awsrequest import AWSRequest
 
 APPSYNC_URL = os.environ["APPSYNC_URL"]
+APPSYNC_API_KEY = os.environ.get("APPSYNC_API_KEY", "")
 AWS_REGION = os.environ.get("AWS_REGION", "us-east-1")
-OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
-OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
+BEDROCK_MODEL = os.environ.get("BEDROCK_MODEL", "amazon.nova-micro-v1:0")
+BEDROCK_REGION = os.environ.get("BEDROCK_REGION", "us-east-1")
 
 def sign_and_post(url, payload: dict):
-
     try:
-        session = boto3.Session()
-        credentials = session.get_credentials()
-        
-        if not credentials:
-            raise RuntimeError("No AWS credentials available")
+        print(f"Environment APPSYNC_API_KEY: {repr(APPSYNC_API_KEY)}")
+        print(f"API Key length: {len(APPSYNC_API_KEY) if APPSYNC_API_KEY else 0}")
+        print(f"Using API Key: {bool(APPSYNC_API_KEY)}")
         
         data = json.dumps(payload).encode("utf-8")
         
-        aws_request = AWSRequest(
-            method="POST", 
-            url=url, 
-            data=data,
-            headers={
-                "Content-Type": "application/json",
-                "Accept": "application/json"
-            }
-        )
+        headers = {
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+        }
         
-        SigV4Auth(credentials, "appsync", AWS_REGION).add_auth(aws_request)
-        
-        request = urlreq.Request(
-            url, 
-            data=data, 
-            method="POST"
-        )
-        
-        for header_name, header_value in aws_request.headers.items():
-            request.add_header(header_name, header_value)
+        if APPSYNC_API_KEY:
+            headers["x-api-key"] = APPSYNC_API_KEY
+            
+            request = urlreq.Request(
+                url, 
+                data=data, 
+                method="POST",
+                headers=headers
+            )
+        else:
+            session = boto3.Session()
+            credentials = session.get_credentials()
+            
+            if not credentials:
+                raise RuntimeError("No AWS credentials available")
+            
+            aws_request = AWSRequest(
+                method="POST", 
+                url=url, 
+                data=data,
+                headers=headers
+            )
+            
+            SigV4Auth(credentials, "appsync", AWS_REGION).add_auth(aws_request)
+            
+            request = urlreq.Request(
+                url, 
+                data=data, 
+                method="POST"
+            )
+            
+            for header_name, header_value in aws_request.headers.items():
+                request.add_header(header_name, header_value)
         
         with urlreq.urlopen(request, timeout=30) as response:
             response_data = response.read().decode('utf-8')
@@ -54,29 +70,114 @@ def sign_and_post(url, payload: dict):
         print(f"Error in sign_and_post: {str(e)}")
         print(f"URL: {url}")
         print(f"Payload: {json.dumps(payload, indent=2)}")
+        print(f"Using API Key: {bool(APPSYNC_API_KEY)}")
         raise
 
-def call_openai(messages):
-    if not OPENAI_API_KEY:
-        return "Mensagem de teste: a função OpenAI está funcionando corretamente!"
-    
-    cleaned_messages = []
-    for msg in messages:
-        cleaned_msg = {"role": msg["role"], "content": msg["content"]}
-        cleaned_messages.append(cleaned_msg)
-    
-    api = "https://api.openai.com/v1/chat/completions"
-    body = json.dumps({
-        "model": OPENAI_MODEL,
-        "messages": cleaned_messages,
-        "temperature": 0.4,
-    }).encode("utf-8")
-    req = urlreq.Request(api, data=body, method="POST",
-                         headers={"Content-Type": "application/json",
-                                  "Authorization": f"Bearer {OPENAI_API_KEY}"})
-    with urlreq.urlopen(req, timeout=60) as resp:
-        r = json.loads(resp.read())
-    return r["choices"][0]["message"]["content"]
+def call_bedrock(messages):
+    try:
+        bedrock_runtime = boto3.client(
+            service_name='bedrock-runtime',
+            region_name=BEDROCK_REGION
+        )
+        
+        is_claude = "anthropic" in BEDROCK_MODEL.lower()
+        is_titan = "amazon.titan" in BEDROCK_MODEL.lower()
+        is_nova = "amazon.nova" in BEDROCK_MODEL.lower()
+        
+        if is_claude:
+            conversation = []
+            system_message = ""
+            
+            for msg in messages:
+                if msg["role"] == "system":
+                    system_message = msg["content"]
+                else:
+                    conversation.append({
+                        "role": msg["role"],
+                        "content": [{"text": msg["content"]}]
+                    })
+            
+            request_body = {
+                "anthropic_version": "bedrock-2023-05-31",
+                "max_tokens": 4000,
+                "temperature": 0.4,
+                "messages": conversation
+            }
+            
+            if system_message:
+                request_body["system"] = system_message
+                
+        elif is_nova:
+            conversation = []
+            system_message = ""
+            
+            for msg in messages:
+                if msg["role"] == "system":
+                    system_message = msg["content"]
+                else:
+                    conversation.append({
+                        "role": msg["role"],
+                        "content": [{"text": msg["content"]}]
+                    })
+            
+            request_body = {
+                "messages": conversation,
+                "inferenceConfig": {
+                    "max_new_tokens": 4000,
+                    "temperature": 0.4,
+                    "top_p": 0.9
+                }
+            }
+            
+            if system_message:
+                request_body["system"] = [{"text": system_message}]
+                
+        elif is_titan:
+            prompt_text = ""
+            for msg in messages:
+                if msg["role"] == "system":
+                    prompt_text += f"System: {msg['content']}\n\n"
+                elif msg["role"] == "user":
+                    prompt_text += f"Human: {msg['content']}\n\n"
+                elif msg["role"] == "assistant":
+                    prompt_text += f"Assistant: {msg['content']}\n\n"
+            
+            prompt_text += "Assistant:"
+            
+            request_body = {
+                "inputText": prompt_text,
+                "textGenerationConfig": {
+                    "maxTokenCount": 4000,
+                    "temperature": 0.4,
+                    "topP": 0.9,
+                    "stopSequences": ["Human:", "System:"]
+                }
+            }
+        else:
+            raise ValueError(f"Modelo não suportado: {BEDROCK_MODEL}")
+        
+        response = bedrock_runtime.invoke_model(
+            modelId=BEDROCK_MODEL,
+            body=json.dumps(request_body)
+        )
+        
+        response_body = json.loads(response['body'].read())
+        
+        if is_claude:
+            if 'content' in response_body and len(response_body['content']) > 0:
+                return response_body['content'][0]['text']
+        elif is_nova:
+            if 'output' in response_body and 'message' in response_body['output']:
+                return response_body['output']['message']['content'][0]['text']
+        elif is_titan:
+            if 'results' in response_body and len(response_body['results']) > 0:
+                return response_body['results'][0]['outputText'].strip()
+        
+        return "Desculpe, não consegui gerar uma resposta."
+            
+    except Exception as e:
+        print(f"Erro ao chamar Bedrock: {str(e)}")
+        return f"Erro ao processar sua solicitação: {str(e)}"
 
 def get_chat_history(chat_id):
     query = """
@@ -110,10 +211,10 @@ def get_chat_history(chat_id):
     
     return history
 
-def add_assistant_message(chat_id, user_id, content):
+def save_assistant_message(chat_id, content):
     mutation = """
-      mutation AddAssistantMessage($chatId: ID!, $userId: ID!, $content: String!) {
-        addAssistantMessage(chatId: $chatId, userId: $userId, content: $content) {
+      mutation AddAssistant($chatId: ID!, $content: String!) {
+        addAssistantMessage(chatId: $chatId, content: $content) {
           id
           chatId
           userId
@@ -128,7 +229,6 @@ def add_assistant_message(chat_id, user_id, content):
         "query": mutation,
         "variables": {
             "chatId": chat_id,
-            "userId": user_id,
             "content": content
         }
     })
@@ -181,9 +281,13 @@ def handler(event, _ctx):
         
         print(f"Histórico construído com {len(history)} mensagens")
         
-        assistant_reply = call_openai(history)
+        assistant_reply = call_bedrock(history)
         
         print(f"Resposta gerada: {assistant_reply[:100]}...")
+        
+        result = save_assistant_message(chat_id, assistant_reply)
+        
+        print(f"Resposta do assistente salva com sucesso")
         
         return {
             "success": True,

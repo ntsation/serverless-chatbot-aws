@@ -96,6 +96,14 @@ resource "aws_iam_policy" "lambda_policy" {
           var.appsync_api_arn,
           "${var.appsync_api_arn}/*"
         ]
+      },
+      {
+        Effect = "Allow",
+        Action = [
+          "bedrock:InvokeModel",
+          "bedrock:InvokeModelWithResponseStream"
+        ],
+        Resource = "*"
       }
     ]
   })

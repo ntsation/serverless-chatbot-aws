@@ -9,7 +9,7 @@ export function request(ctx) {
         ':userId': util.dynamodb.toDynamoDB(ctx.arguments.userId)
       }
     },
-    index: 'userId-createdAt-index',
+    index: 'GSI1',
     scanIndexForward: false,
     limit: ctx.arguments.limit || 50
   };
