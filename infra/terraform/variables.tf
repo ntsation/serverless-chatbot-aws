@@ -21,3 +21,15 @@ variable "logout_urls" {
   default     = ["http://localhost:3000/", "https://localhost:3000/"]
   description = "List of allowed logout URLs for the Cognito User Pool Client"
 }
+
+variable "bedrock_model" {
+  type        = string
+  default     = "amazon.nova-micro-v1:0"
+  description = "The Bedrock model ID to use for the chatbot"
+}
+
+variable "bedrock_region" {
+  type        = string
+  default     = "us-east-1"
+  description = "The AWS region for Bedrock"
+}
