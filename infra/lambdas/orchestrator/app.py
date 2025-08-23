@@ -4,41 +4,57 @@ from botocore.auth import SigV4Auth
 from botocore.awsrequest import AWSRequest
 
 APPSYNC_URL = os.environ["APPSYNC_URL"]
+APPSYNC_API_KEY = os.environ.get("APPSYNC_API_KEY", "")
 AWS_REGION = os.environ.get("AWS_REGION", "us-east-1")
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
 OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
 
 def sign_and_post(url, payload: dict):
-
     try:
-        session = boto3.Session()
-        credentials = session.get_credentials()
-        
-        if not credentials:
-            raise RuntimeError("No AWS credentials available")
+        print(f"Environment APPSYNC_API_KEY: {repr(APPSYNC_API_KEY)}")
+        print(f"API Key length: {len(APPSYNC_API_KEY) if APPSYNC_API_KEY else 0}")
+        print(f"Using API Key: {bool(APPSYNC_API_KEY)}")
         
         data = json.dumps(payload).encode("utf-8")
         
-        aws_request = AWSRequest(
-            method="POST", 
-            url=url, 
-            data=data,
-            headers={
-                "Content-Type": "application/json",
-                "Accept": "application/json"
-            }
-        )
+        headers = {
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+        }
         
-        SigV4Auth(credentials, "appsync", AWS_REGION).add_auth(aws_request)
-        
-        request = urlreq.Request(
-            url, 
-            data=data, 
-            method="POST"
-        )
-        
-        for header_name, header_value in aws_request.headers.items():
-            request.add_header(header_name, header_value)
+        if APPSYNC_API_KEY:
+            headers["x-api-key"] = APPSYNC_API_KEY
+            
+            request = urlreq.Request(
+                url, 
+                data=data, 
+                method="POST",
+                headers=headers
+            )
+        else:
+            session = boto3.Session()
+            credentials = session.get_credentials()
+            
+            if not credentials:
+                raise RuntimeError("No AWS credentials available")
+            
+            aws_request = AWSRequest(
+                method="POST", 
+                url=url, 
+                data=data,
+                headers=headers
+            )
+            
+            SigV4Auth(credentials, "appsync", AWS_REGION).add_auth(aws_request)
+            
+            request = urlreq.Request(
+                url, 
+                data=data, 
+                method="POST"
+            )
+            
+            for header_name, header_value in aws_request.headers.items():
+                request.add_header(header_name, header_value)
         
         with urlreq.urlopen(request, timeout=30) as response:
             response_data = response.read().decode('utf-8')
@@ -54,6 +70,7 @@ def sign_and_post(url, payload: dict):
         print(f"Error in sign_and_post: {str(e)}")
         print(f"URL: {url}")
         print(f"Payload: {json.dumps(payload, indent=2)}")
+        print(f"Using API Key: {bool(APPSYNC_API_KEY)}")
         raise
 
 def call_openai(messages):
