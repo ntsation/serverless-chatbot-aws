@@ -17,33 +17,33 @@ type Chat {
 type Message {
   id: ID!
   chatId: ID!
-  userId: ID!
+  userId: ID
   role: String!
   content: String!
   createdAt: AWSDateTime!
 }
 
 type MessageConnection {
-  items: [Message!]!
+  items: [Message!]! @aws_iam @aws_api_key @aws_cognito_user_pools
   nextToken: String
 }
 
-type Query {
+type Query @aws_api_key @aws_cognito_user_pools {
   me: User!
   getChat(id: ID!): Chat!
   listChatsByUser(userId: ID!, limit: Int, nextToken: String): [Chat!]!
-  listMessages(chatId: ID!, limit: Int, nextToken: String): MessageConnection!
+  listMessages(chatId: ID!, limit: Int, nextToken: String): MessageConnection! @aws_iam @aws_api_key @aws_cognito_user_pools
 }
 
-type Mutation {
+type Mutation @aws_api_key @aws_cognito_user_pools {
   createUser(email: String!): User
-  createChat(title: String!): Chat
+  createChat(title: String!, userId: ID!): Chat
   sendMessage(chatId: ID!, content: String!): Message
   addAssistantMessage(chatId: ID!, content: String!): Message 
   deleteChat(id: ID!): Boolean
 }
 
-type Subscription {
-  onMessageSent(chatId: ID!): Message!
+type Subscription @aws_api_key @aws_cognito_user_pools {
+  onMessageSent(chatId: ID!): Message
     @aws_subscribe(mutations: ["sendMessage", "addAssistantMessage"])
 }

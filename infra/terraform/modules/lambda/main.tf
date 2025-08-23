@@ -7,9 +7,10 @@ resource "aws_lambda_function" "orchestrator" {
 
   environment {
     variables = {
-      APPSYNC_URL    = var.appsync_url
-      MESSAGES_TABLE = var.messages_table
-      CHATS_TABLE    = var.chats_table
+      APPSYNC_URL     = var.appsync_url
+      APPSYNC_API_KEY = var.appsync_api_key
+      BEDROCK_MODEL   = var.bedrock_model
+      BEDROCK_REGION  = var.bedrock_region
     }
   }
 

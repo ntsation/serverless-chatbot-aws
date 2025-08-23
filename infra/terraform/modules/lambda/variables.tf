@@ -23,12 +23,20 @@ variable "appsync_url" {
   type        = string
 }
 
-variable "messages_table" {
-  description = "Name of the messages DynamoDB table"
+variable "appsync_api_key" {
+  description = "API Key for AppSync"
   type        = string
+  sensitive   = true
 }
 
-variable "chats_table" {
-  description = "Name of the chats DynamoDB table"
+variable "bedrock_model" {
+  description = "Bedrock model ID to use"
   type        = string
+  default     = "amazon.nova-micro-v1:0"
+}
+
+variable "bedrock_region" {
+  description = "AWS region for Bedrock"
+  type        = string
+  default     = "us-east-1"
 }

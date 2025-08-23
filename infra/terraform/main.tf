@@ -54,8 +54,10 @@ module "lambda" {
   ecr_repository_url = module.ecr.orchestrator_repository_url
   lambda_role_arn    = module.iam.lambda_role_arn
   appsync_url        = module.appsync.api_url
-  messages_table     = module.dynamodb.messages_table_name
-  depends_on = [ module.ecr ]
+  appsync_api_key    = module.appsync.api_key
+  bedrock_model      = var.bedrock_model
+  bedrock_region     = var.bedrock_region
+  depends_on         = [ module.ecr ]
 }
 
 module "cloudwatch" {

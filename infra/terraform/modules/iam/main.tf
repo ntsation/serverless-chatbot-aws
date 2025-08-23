@@ -91,24 +91,19 @@ resource "aws_iam_policy" "lambda_policy" {
       },
       {
         Effect = "Allow",
-        Action = [
-          "dynamodb:Query",
-          "dynamodb:GetItem",
-          "dynamodb:DeleteItem",
-          "dynamodb:BatchWriteItem"
-        ],
-        Resource = [
-          var.messages_table_arn,
-          var.chats_table_arn
-        ]
-      },
-      {
-        Effect = "Allow",
         Action = ["appsync:GraphQL"],
         Resource = [
           var.appsync_api_arn,
           "${var.appsync_api_arn}/*"
         ]
+      },
+      {
+        Effect = "Allow",
+        Action = [
+          "bedrock:InvokeModel",
+          "bedrock:InvokeModelWithResponseStream"
+        ],
+        Resource = "*"
       }
     ]
   })
