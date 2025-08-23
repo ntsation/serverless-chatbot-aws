@@ -28,3 +28,15 @@ variable "appsync_api_key" {
   type        = string
   sensitive   = true
 }
+
+variable "bedrock_model" {
+  description = "Bedrock model ID to use"
+  type        = string
+  default     = "amazon.nova-micro-v1:0"
+}
+
+variable "bedrock_region" {
+  description = "AWS region for Bedrock"
+  type        = string
+  default     = "us-east-1"
+}
