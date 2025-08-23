@@ -28,14 +28,14 @@ type MessageConnection {
   nextToken: String
 }
 
-type Query {
+type Query @aws_api_key @aws_cognito_user_pools {
   me: User!
   getChat(id: ID!): Chat!
   listChatsByUser(userId: ID!, limit: Int, nextToken: String): [Chat!]!
   listMessages(chatId: ID!, limit: Int, nextToken: String): MessageConnection!
 }
 
-type Mutation {
+type Mutation @aws_api_key @aws_cognito_user_pools {
   createUser(email: String!): User
   createChat(title: String!, userId: ID!): Chat
   sendMessage(chatId: ID!, content: String!): Message
@@ -43,7 +43,7 @@ type Mutation {
   deleteChat(id: ID!): Boolean
 }
 
-type Subscription {
+type Subscription @aws_api_key @aws_cognito_user_pools {
   onMessageSent(chatId: ID!): Message
     @aws_subscribe(mutations: ["sendMessage", "addAssistantMessage"])
 }
