@@ -55,6 +55,8 @@ module "lambda" {
   lambda_role_arn    = module.iam.lambda_role_arn
   appsync_url        = module.appsync.api_url
   appsync_api_key    = module.appsync.api_key
+  bedrock_model      = var.bedrock_model
+  bedrock_region     = var.bedrock_region
   depends_on         = [ module.ecr ]
 }
 
