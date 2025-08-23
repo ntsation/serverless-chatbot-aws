@@ -22,3 +22,9 @@ variable "appsync_url" {
   description = "URL of the AppSync API"
   type        = string
 }
+
+variable "appsync_api_key" {
+  description = "API Key for AppSync"
+  type        = string
+  sensitive   = true
+}
