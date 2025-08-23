@@ -7,7 +7,8 @@ resource "aws_lambda_function" "orchestrator" {
 
   environment {
     variables = {
-      APPSYNC_URL = var.appsync_url
+      APPSYNC_URL     = var.appsync_url
+      APPSYNC_API_KEY = var.appsync_api_key
     }
   }
 
