@@ -11,6 +11,10 @@ resource "aws_appsync_graphql_api" "api" {
     }
   }
 
+  additional_authentication_provider {
+    authentication_type = "AWS_IAM"
+  }
+
   log_config {
     cloudwatch_logs_role_arn = var.cloudwatch_logs_role_arn
     field_log_level          = var.cloudwatch_logs_role_arn != "" ? "ERROR" : "NONE"
@@ -99,6 +103,28 @@ resource "aws_appsync_function" "invoke_orchestrator" {
   code = file("${path.module}/functions/fn_invoke_lambda.js")
 }
 
+resource "aws_appsync_function" "save_assistant_response" {
+  api_id      = aws_appsync_graphql_api.api.id
+  data_source = aws_appsync_datasource.messages_table.name
+  name        = "SaveAssistantResponse"
+  runtime {
+    name            = "APPSYNC_JS"
+    runtime_version = "1.0.0"
+  }
+  code = file("${path.module}/functions/fn_save_assistant_response.js")
+}
+
+resource "aws_appsync_function" "trigger_assistant_subscription" {
+  api_id      = aws_appsync_graphql_api.api.id
+  data_source = aws_appsync_datasource.lambda_orchestrator.name
+  name        = "TriggerAssistantSubscription"
+  runtime {
+    name            = "APPSYNC_JS"
+    runtime_version = "1.0.0"
+  }
+  code = file("${path.module}/functions/fn_trigger_assistant_subscription.js")
+}
+
 resource "aws_appsync_resolver" "send_message" {
   api_id = aws_appsync_graphql_api.api.id
   type   = "Mutation"
@@ -108,7 +134,9 @@ resource "aws_appsync_resolver" "send_message" {
   pipeline_config {
     functions = [
       aws_appsync_function.put_user_message.function_id,
-      aws_appsync_function.invoke_orchestrator.function_id
+      aws_appsync_function.invoke_orchestrator.function_id,
+      aws_appsync_function.save_assistant_response.function_id,
+      aws_appsync_function.trigger_assistant_subscription.function_id
     ]
   }
 

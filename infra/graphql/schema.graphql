@@ -24,7 +24,7 @@ type Message {
 }
 
 type MessageConnection {
-  items: [Message!]!
+  items: [Message!]! @aws_iam @aws_api_key @aws_cognito_user_pools
   nextToken: String
 }
 
@@ -32,7 +32,7 @@ type Query @aws_api_key @aws_cognito_user_pools {
   me: User!
   getChat(id: ID!): Chat!
   listChatsByUser(userId: ID!, limit: Int, nextToken: String): [Chat!]!
-  listMessages(chatId: ID!, limit: Int, nextToken: String): MessageConnection!
+  listMessages(chatId: ID!, limit: Int, nextToken: String): MessageConnection! @aws_iam @aws_api_key @aws_cognito_user_pools
 }
 
 type Mutation @aws_api_key @aws_cognito_user_pools {

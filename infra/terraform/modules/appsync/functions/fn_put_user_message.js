@@ -31,7 +31,7 @@ export function response(ctx) {
     return util.error(ctx.error.message, ctx.error.type);
   }
   
-  return {
+  const userMessage = {
     id: ctx.stash.messageId,
     chatId: ctx.arguments.chatId,
     userId: ctx.stash.userId,
@@ -39,4 +39,8 @@ export function response(ctx) {
     content: ctx.arguments.content,
     createdAt: ctx.stash.timestamp
   };
+  
+  ctx.stash.userMessage = userMessage;
+  
+  return userMessage;
 }

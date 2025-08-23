@@ -1,4 +1,4 @@
-import os, json, boto3
+import os, json, boto3, threading
 from urllib import request as urlreq
 from botocore.auth import SigV4Auth
 from botocore.awsrequest import AWSRequest
@@ -217,6 +217,7 @@ def save_assistant_message(chat_id, content):
         addAssistantMessage(chatId: $chatId, content: $content) {
           id
           chatId
+          userId
           role
           content
           createdAt
@@ -224,16 +225,39 @@ def save_assistant_message(chat_id, content):
       }
     """
     
-    return sign_and_post(APPSYNC_URL, {
+    result = sign_and_post(APPSYNC_URL, {
         "query": mutation,
         "variables": {
             "chatId": chat_id,
             "content": content
         }
     })
+    
+    return result.get("addAssistantMessage")
 
 def handler(event, _ctx):
     print(f"Event received: {json.dumps(event)}")
+    
+    if event.get("action") == "trigger_subscription":
+        assistant_message = event.get("assistantMessage")
+        if assistant_message:
+            try:
+                print(f"Triggerando subscription para mensagem do assistant: {assistant_message['content'][:100]}...")
+                result = add_assistant_message(
+                    assistant_message["chatId"],
+                    assistant_message["userId"],
+                    assistant_message["content"]
+                )
+                print(f"Subscription triggerada com sucesso: {result}")
+                return {"success": True, "triggeredSubscription": True}
+            except Exception as e:
+                print(f"Erro ao triggerar subscription: {str(e)}")
+                return {"success": False, "error": str(e)}
+        else:
+            return {"success": False, "error": "Nenhuma mensagem do assistant fornecida"}
+    
+    if event.get("action") == "skip":
+        return {"success": True, "skipped": True}
     
     try:
         args = event.get("arguments", {})
@@ -268,7 +292,11 @@ def handler(event, _ctx):
         return {
             "success": True,
             "message": "Resposta do assistente processada com sucesso",
-            "assistantMessage": result.get("addAssistantMessage")
+            "assistantMessage": {
+                "chatId": chat_id,
+                "userId": user_id,
+                "content": assistant_reply
+            }
         }
         
     except Exception as e:
