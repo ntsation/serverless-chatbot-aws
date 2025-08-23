@@ -6,8 +6,8 @@ from botocore.awsrequest import AWSRequest
 APPSYNC_URL = os.environ["APPSYNC_URL"]
 APPSYNC_API_KEY = os.environ.get("APPSYNC_API_KEY", "")
 AWS_REGION = os.environ.get("AWS_REGION", "us-east-1")
-OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
-OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
+BEDROCK_MODEL = os.environ.get("BEDROCK_MODEL", "amazon.nova-micro-v1:0")
+BEDROCK_REGION = os.environ.get("BEDROCK_REGION", "us-east-1")
 
 def sign_and_post(url, payload: dict):
     try:
@@ -73,27 +73,111 @@ def sign_and_post(url, payload: dict):
         print(f"Using API Key: {bool(APPSYNC_API_KEY)}")
         raise
 
-def call_openai(messages):
-    if not OPENAI_API_KEY:
-        return "Mensagem de teste: a função OpenAI está funcionando corretamente!"
-    
-    cleaned_messages = []
-    for msg in messages:
-        cleaned_msg = {"role": msg["role"], "content": msg["content"]}
-        cleaned_messages.append(cleaned_msg)
-    
-    api = "https://api.openai.com/v1/chat/completions"
-    body = json.dumps({
-        "model": OPENAI_MODEL,
-        "messages": cleaned_messages,
-        "temperature": 0.4,
-    }).encode("utf-8")
-    req = urlreq.Request(api, data=body, method="POST",
-                         headers={"Content-Type": "application/json",
-                                  "Authorization": f"Bearer {OPENAI_API_KEY}"})
-    with urlreq.urlopen(req, timeout=60) as resp:
-        r = json.loads(resp.read())
-    return r["choices"][0]["message"]["content"]
+def call_bedrock(messages):
+    try:
+        bedrock_runtime = boto3.client(
+            service_name='bedrock-runtime',
+            region_name=BEDROCK_REGION
+        )
+        
+        is_claude = "anthropic" in BEDROCK_MODEL.lower()
+        is_titan = "amazon.titan" in BEDROCK_MODEL.lower()
+        is_nova = "amazon.nova" in BEDROCK_MODEL.lower()
+        
+        if is_claude:
+            conversation = []
+            system_message = ""
+            
+            for msg in messages:
+                if msg["role"] == "system":
+                    system_message = msg["content"]
+                else:
+                    conversation.append({
+                        "role": msg["role"],
+                        "content": [{"text": msg["content"]}]
+                    })
+            
+            request_body = {
+                "anthropic_version": "bedrock-2023-05-31",
+                "max_tokens": 4000,
+                "temperature": 0.4,
+                "messages": conversation
+            }
+            
+            if system_message:
+                request_body["system"] = system_message
+                
+        elif is_nova:
+            conversation = []
+            system_message = ""
+            
+            for msg in messages:
+                if msg["role"] == "system":
+                    system_message = msg["content"]
+                else:
+                    conversation.append({
+                        "role": msg["role"],
+                        "content": [{"text": msg["content"]}]
+                    })
+            
+            request_body = {
+                "messages": conversation,
+                "inferenceConfig": {
+                    "max_new_tokens": 4000,
+                    "temperature": 0.4,
+                    "top_p": 0.9
+                }
+            }
+            
+            if system_message:
+                request_body["system"] = [{"text": system_message}]
+                
+        elif is_titan:
+            prompt_text = ""
+            for msg in messages:
+                if msg["role"] == "system":
+                    prompt_text += f"System: {msg['content']}\n\n"
+                elif msg["role"] == "user":
+                    prompt_text += f"Human: {msg['content']}\n\n"
+                elif msg["role"] == "assistant":
+                    prompt_text += f"Assistant: {msg['content']}\n\n"
+            
+            prompt_text += "Assistant:"
+            
+            request_body = {
+                "inputText": prompt_text,
+                "textGenerationConfig": {
+                    "maxTokenCount": 4000,
+                    "temperature": 0.4,
+                    "topP": 0.9,
+                    "stopSequences": ["Human:", "System:"]
+                }
+            }
+        else:
+            raise ValueError(f"Modelo não suportado: {BEDROCK_MODEL}")
+        
+        response = bedrock_runtime.invoke_model(
+            modelId=BEDROCK_MODEL,
+            body=json.dumps(request_body)
+        )
+        
+        response_body = json.loads(response['body'].read())
+        
+        if is_claude:
+            if 'content' in response_body and len(response_body['content']) > 0:
+                return response_body['content'][0]['text']
+        elif is_nova:
+            if 'output' in response_body and 'message' in response_body['output']:
+                return response_body['output']['message']['content'][0]['text']
+        elif is_titan:
+            if 'results' in response_body and len(response_body['results']) > 0:
+                return response_body['results'][0]['outputText'].strip()
+        
+        return "Desculpe, não consegui gerar uma resposta."
+            
+    except Exception as e:
+        print(f"Erro ao chamar Bedrock: {str(e)}")
+        return f"Erro ao processar sua solicitação: {str(e)}"
 
 def get_chat_history(chat_id):
     query = """
@@ -127,10 +211,10 @@ def get_chat_history(chat_id):
     
     return history
 
-def save_assistant_message(chat_id, content, user_id):
+def save_assistant_message(chat_id, content):
     mutation = """
-      mutation AddAssistant($chatId: ID!, $content: String!, $userId: ID!) {
-        addAssistantMessage(chatId: $chatId, content: $content, userId: $userId) {
+      mutation AddAssistant($chatId: ID!, $content: String!) {
+        addAssistantMessage(chatId: $chatId, content: $content) {
           id
           chatId
           role
@@ -144,8 +228,7 @@ def save_assistant_message(chat_id, content, user_id):
         "query": mutation,
         "variables": {
             "chatId": chat_id,
-            "content": content,
-            "userId": user_id
+            "content": content
         }
     })
 
@@ -174,11 +257,11 @@ def handler(event, _ctx):
         
         print(f"Histórico construído com {len(history)} mensagens")
         
-        assistant_reply = call_openai(history)
+        assistant_reply = call_bedrock(history)
         
         print(f"Resposta gerada: {assistant_reply[:100]}...")
         
-        result = save_assistant_message(chat_id, assistant_reply, user_id)
+        result = save_assistant_message(chat_id, assistant_reply)
         
         print(f"Resposta do assistente salva com sucesso")
         
