@@ -2,4 +2,4 @@
 
 ## Architecture
 
-![Architecture Diagram](images/arq.drawio.png)
+![Architecture Diagram](images/serverless-chatbot-aws.jpg)
