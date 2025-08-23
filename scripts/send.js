@@ -1,8 +1,10 @@
 // send.js
+require('dotenv').config({ path: '../.env' });
 const fetch = require('node-fetch');
-const URL_API_ID = '';
-const REGION = '';
-const API_KEY = '';
+
+const URL_API_ID = process.env.APPSYNC_API_ID;
+const REGION = process.env.AWS_REGION;
+const API_KEY = process.env.APPSYNC_API_KEY;
 
 
 const MUTATION = `
@@ -19,8 +21,8 @@ mutation SendMessage($chatId: ID!, $content: String!) {
 `;
 
 const VARIABLES = {
-  chatId: '',
-  content: '',
+  chatId: process.env.CHAT_ID || '',
+  content: process.env.MESSAGE_CONTENT || 'Mensagem de teste',
 };
 
 const url = `https://${URL_API_ID}.appsync-api.${REGION}.amazonaws.com/graphql`;

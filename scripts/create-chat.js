@@ -1,7 +1,9 @@
+require('dotenv').config({ path: '../.env' });
 const fetch = require('node-fetch');
-const URL_API_ID = '';
-const REGION = '';
-const API_KEY = '';
+
+const URL_API_ID = process.env.APPSYNC_API_ID;
+const REGION = process.env.AWS_REGION;
+const API_KEY = process.env.APPSYNC_API_KEY;
 
 const MUTATION = `
 mutation CreateChat($title: String!, $userId: ID!) {
@@ -15,8 +17,8 @@ mutation CreateChat($title: String!, $userId: ID!) {
 `;
 
 const VARIABLES = {
-  title: '',
-  userId: ''
+  title: process.env.CHAT_TITLE || 'Novo Chat',
+  userId: process.env.USER_ID || ''
 };
 
 const url = `https://${URL_API_ID}.appsync-api.${REGION}.amazonaws.com/graphql`;

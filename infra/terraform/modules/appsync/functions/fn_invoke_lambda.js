@@ -26,5 +26,11 @@ export function response(ctx) {
   if (ctx.error) {
     return util.error(ctx.error.message, ctx.error.type);
   }
+  
+  if (ctx.result && ctx.result.assistantMessage) {
+    ctx.stash.assistantMessage = ctx.result.assistantMessage;
+    console.log('InvokeLambda - Mensagem do assistant adicionada ao stash:', JSON.stringify(ctx.result.assistantMessage));
+  }
+  
   return ctx.stash.userMessage;
 }

@@ -1,4 +1,4 @@
-import os, json, boto3
+import os, json, boto3, threading
 from urllib import request as urlreq
 from botocore.auth import SigV4Auth
 from botocore.awsrequest import AWSRequest
@@ -110,12 +110,13 @@ def get_chat_history(chat_id):
     
     return history
 
-def save_assistant_message(chat_id, content, user_id):
+def add_assistant_message(chat_id, user_id, content):
     mutation = """
-      mutation AddAssistant($chatId: ID!, $content: String!, $userId: ID!) {
-        addAssistantMessage(chatId: $chatId, content: $content, userId: $userId) {
+      mutation AddAssistantMessage($chatId: ID!, $userId: ID!, $content: String!) {
+        addAssistantMessage(chatId: $chatId, userId: $userId, content: $content) {
           id
           chatId
+          userId
           role
           content
           createdAt
@@ -123,17 +124,40 @@ def save_assistant_message(chat_id, content, user_id):
       }
     """
     
-    return sign_and_post(APPSYNC_URL, {
+    result = sign_and_post(APPSYNC_URL, {
         "query": mutation,
         "variables": {
             "chatId": chat_id,
-            "content": content,
-            "userId": user_id
+            "userId": user_id,
+            "content": content
         }
     })
+    
+    return result.get("addAssistantMessage")
 
 def handler(event, _ctx):
     print(f"Event received: {json.dumps(event)}")
+    
+    if event.get("action") == "trigger_subscription":
+        assistant_message = event.get("assistantMessage")
+        if assistant_message:
+            try:
+                print(f"Triggerando subscription para mensagem do assistant: {assistant_message['content'][:100]}...")
+                result = add_assistant_message(
+                    assistant_message["chatId"],
+                    assistant_message["userId"],
+                    assistant_message["content"]
+                )
+                print(f"Subscription triggerada com sucesso: {result}")
+                return {"success": True, "triggeredSubscription": True}
+            except Exception as e:
+                print(f"Erro ao triggerar subscription: {str(e)}")
+                return {"success": False, "error": str(e)}
+        else:
+            return {"success": False, "error": "Nenhuma mensagem do assistant fornecida"}
+    
+    if event.get("action") == "skip":
+        return {"success": True, "skipped": True}
     
     try:
         args = event.get("arguments", {})
@@ -161,14 +185,14 @@ def handler(event, _ctx):
         
         print(f"Resposta gerada: {assistant_reply[:100]}...")
         
-        result = save_assistant_message(chat_id, assistant_reply, user_id)
-        
-        print(f"Resposta do assistente salva com sucesso")
-        
         return {
             "success": True,
             "message": "Resposta do assistente processada com sucesso",
-            "assistantMessage": result.get("addAssistantMessage")
+            "assistantMessage": {
+                "chatId": chat_id,
+                "userId": user_id,
+                "content": assistant_reply
+            }
         }
         
     except Exception as e:

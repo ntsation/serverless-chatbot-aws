@@ -8,7 +8,7 @@ export function request(ctx) {
     operation: 'PutItem',
     key: {
       chatId: util.dynamodb.toDynamoDB(ctx.arguments.chatId),
-      sk: util.dynamodb.toDynamoDB(timestamp)
+      sk: util.dynamodb.toDynamoDB(`${timestamp}#${messageId}`)
     },
     attributeValues: {
       id: util.dynamodb.toDynamoDB(messageId),
@@ -24,5 +24,13 @@ export function response(ctx) {
   if (ctx.error) {
     return util.error(ctx.error.message, ctx.error.type);
   }
-  return ctx.result;
+  
+  return {
+    id: ctx.result.id,
+    chatId: ctx.result.chatId,
+    userId: ctx.result.userId,
+    role: ctx.result.role,
+    content: ctx.result.content,
+    createdAt: ctx.result.createdAt
+  };
 }
